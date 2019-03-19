@@ -7,12 +7,31 @@ class App extends Component {
   constructor(){
     super()
     this.state={
-      room:'',
+      room: '',
+      userId:'',
       username: '',
       message: '',
       messages:['hello', 'test'],
       userTyping: false,
-      userTypingName: ''
+      userTypingName: '',
+      users: [
+        {
+          id: 1,
+          username: "Dude 1"
+        },
+        {
+          id: 8,
+          username: "Dude 2"
+        },
+        {
+          id: 3,
+          username: "Dude 3"
+        },
+        {
+          id: 21,
+          username: "Dude 4"
+        }
+      ]
     }
   }
 
@@ -23,42 +42,51 @@ class App extends Component {
   setSocketListeners = () => {
     this.socket = io()
 
-    this.socket.on("msg", (message) => {
-      console.log(message)
+    this.socket.on('sendMsg', (msg) => {
       let messages = this.state.messages
-      messages.push(message)
+      messages.push(msg)
       this.setState({messages})
     })
+  }
+  
+  login = () => {
+    alert('logged in as user ' + this.state.userId)
+  }
 
-    this.socket.on("someoneIsTyping", (username) => {
-      this.setState({userTypingName: username, userTyping: true})
-    })
-
-    this.socket.on("doneTyping", () => {
-      this.setState({userTypingName:'', userTyping: false})
-    })
+  sendMessage = () => {
+    this.socket.emit('sendMsg', {room:this.state.room, msg:this.state.message})
   }
 
   componentWillUnmount() {
     this.socket.disconnect();
   }
 
-  joinRoom = () => {
-    this.socket.emit("joinRoom", this.state.room)
-  }
-
-  sendMessage = () => {
-    this.socket.emit("msg", {message:this.state.message, room:this.state.room})
-    this.socket.emit("doneTyping", this.state.room)
-    this.setState({message:''})
-  }
-
-  typingMessage = (e) => {
-    this.setState({message:e.target.value})
-    this.socket.emit("someoneIsTyping", {username:this.state.username, room:this.state.room})
+  joinChatRoom = (myId, friendId) => {
+    this.socket.emit('leaveRoom', this.state.room)
+    myId = parseInt(myId)
+    friendId = parseInt(friendId)
+    let highUser
+    let lowUser
+    if(myId > friendId){
+      highUser = myId
+      lowUser = friendId
+    } else {
+      highUser = friendId
+      lowUser = myId
+    }
+    const roomId = highUser + ':' + lowUser
+    console.log(roomId)
+    this.setState({room:roomId})
+    this.socket.emit('joinRoom', roomId)
   }
 
   render() {
+    console.log(this.state)
+    const friends = this.state.users.map((user, i) => {
+      return (
+        <p onClick={() => this.joinChatRoom(this.state.userId, user.id)}>Chat with {user.username}</p>
+      )
+    })
     const messages = this.state.messages.map((msg)=> {
       return(
         <p>{msg}</p>
@@ -67,13 +95,21 @@ class App extends Component {
     return (
       <div className="App">
         {messages}
-        <input onChange={(e)=>this.setState({room: e.target.value})} placeholder="room"/>
+        <input onChange={(e)=>this.setState({userId: e.target.value})} placeholder="id"/>
         <input onChange={(e)=>this.setState({username: e.target.value})} placeholder="username"/>
-        <button onClick={this.joinRoom}>Join Room</button>
-        <input value={this.state.message} onChange={this.typingMessage} placeholder="message"/>
+        <button onClick={this.login}>Login</button>
+        <input value={this.state.message} onChange={(e) => this.setState({message: e.target.value})} placeholder="message"/>
         <button onClick={this.sendMessage}>Send Message</button>
         <br/>
         {this.state.userTyping && <p>{this.state.userTypingName} is Typing</p>}
+        <br/>
+        <br/>
+        <br/>
+        <br/>
+        <br/>
+        <br/>
+        <br/>
+        {friends}
       </div>
     );
   }
